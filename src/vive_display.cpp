@@ -31,7 +31,14 @@ ViveDisplay::ViveDisplay()
 
 ViveDisplay::~ViveDisplay()
 {
+    if (_pHMD) {
+		vr::VR_Shutdown();
+		_pHMD = NULL;
+	}
 
+	_pSceneManager->destroySceneNode("StereoCameraNode");
+	_pSceneManager->destroyCamera("CameraLeft");
+	_pSceneManager->destroyCamera("CameraRight");
 }
 
 void ViveDisplay::onInitialize()
@@ -50,6 +57,7 @@ void ViveDisplay::onInitialize()
 	{
 		std::cout << "Compositor initialization failed. See log file for details";
 	}
+	vr::VRCompositor()->SetTrackingSpace(vr::TrackingUniverseRawAndUncalibrated);
 
 	_pDisplayContext = context_;
     _pSceneManager = scene_manager_;
@@ -59,6 +67,9 @@ void ViveDisplay::onInitialize()
 		_pCameraNode = _pSceneNode->createChildSceneNode("StereoCameraNode");
 	else
 		_pCameraNode = _pSceneManager->getRootSceneNode()->createChildSceneNode("StereoCameraNode");
+
+	_pSceneNode->setPosition(Ogre::Vector3::ZERO);
+	_pSceneNode->setOrientation(Ogre::Quaternion::IDENTITY);
 
     _pCameras[0] = _pSceneManager->createCamera("CameraLeft");
 	_pCameras[1] = _pSceneManager->createCamera("CameraRight");
@@ -76,6 +87,8 @@ void ViveDisplay::onInitialize()
     _pRenderTexutresId[0] = static_cast<Ogre::GLTexture*>(textureManager->getByName("RenderTexture1").getPointer())->getGLID();
     _pRenderTextures[1] = _renderTextures[1]->getBuffer()->getRenderTarget();
     _pRenderTexutresId[1] = static_cast<Ogre::GLTexture*>(textureManager->getByName("RenderTexture2").getPointer())->getGLID();
+
+	_pHMD->GetProjectionMatrix(vr::Eye_Left, 0.01, 100);
 
 	vr::HmdMatrix44_t prj[2] = { 
 		_pHMD->GetProjectionMatrix(vr::Eye_Left, 0.01, 100),
@@ -100,18 +113,21 @@ void ViveDisplay::update(float wall_dt, float ros_dr)
 	handleInput();
 
 	Ogre::Camera *cam = _pDisplayContext->getViewManager()->getCurrent()->getCamera();
-	Ogre::Vector3 pos = cam->getDerivedPosition();
-	Ogre::Quaternion ori = cam->getDerivedOrientation();
-	
-	_pSceneNode->setOrientation(ori);
-	_pSceneNode->setPosition(pos);
+	// Ogre::Vector3 pos = cam->getDerivedPosition();
+	// Ogre::Quaternion ori = cam->getDerivedOrientation();
 
-	if (_steamVrPose[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
-	{
+	// _pSceneNode->setPosition(pos);
+	// _pSceneNode->setOrientation(ori);
+
+	if (_steamVrPose[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid) {
 		Ogre::Vector3 vivePos = _trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].getTrans();
 		Ogre::Quaternion viveOri = _trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].extractQuaternion();
-		_pCameraNode->setPosition(vivePos);
-		_pCameraNode->setOrientation(ori);
+
+		_pCameraNode->setPosition(vivePos + Ogre::Vector3(0.101149, -2.90988, 3.20184) );
+		_pCameraNode->setOrientation(viveOri);
+
+		ROS_INFO_STREAM(vivePos);
+		ROS_INFO_STREAM(viveOri);
 	}
 
     _pRenderTextures[0]->update(true);
@@ -159,7 +175,7 @@ void ViveDisplay::handleInput()
 	{
 		if (_steamVrPose[nDevice].bPoseIsValid)
 		{
-			_trackedDevicePose[nDevice] = MatSteamVRtoOgre4(_steamVrPose[nDevice].mDeviceToAbsoluteTracking).inverse();
+			_trackedDevicePose[nDevice] = MatSteamVRtoOgre4(_steamVrPose[nDevice].mDeviceToAbsoluteTracking);
 		}
 	}
 }

@@ -26,16 +26,50 @@
 cmake_minimum_required(VERSION 3.1.0)
 project(rviz_vive)
 
+## Compile as C++11, supported in ROS Kinetic and newer
+add_compile_options(-std=c++11)
+
 ##Hardcoded OpenVR Path please change
-set(OPENVR "~/agn/openvr")
-include_directories("${OPENVR}/headers")
-link_directories("${OPENVR}/lib/linux64")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ")
+# set(OPENVR "~/lib/openvr")
+# include_directories("${OPENVR}/headers")
+# link_directories("${OPENVR}/lib/linux64")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ")
+
+
+###########
+## Paths ##
+###########
+
+## Set OpenVR library path
+## ENV reads paths from a system environment variable
+set(OPENVR "$ENV{HOME}/lib/openvr")
+
+set(THIRDPARTY_DIR ${OPENVR}/samples/thirdparty)
+set(SHARED_SRC_DIR ${OPENVR}/samples/shared)
+
+## OpenVR SDK path
+find_library(OPENVR_LIBRARIES
+  NAMES
+    ## Specify one or more possible names for the library
+    openvr_api
+  PATHS
+    ## Specify directories to search in addition to the default locations
+    ${OPENVR}/bin
+    ${OPENVR}/lib
+  PATH_SUFFIXES
+    ## Specify additional subdirectories to check below each directory location otherwise considered
+    linux64
+  ## If NO_DEFAULT_PATH is specified, then no additional paths are added to the search
+  NO_DEFAULT_PATH
+  ## If NO_CMAKE_FIND_ROOT_PATH is used then CMAKE_FIND_ROOT_PATH will not be used
+  NO_CMAKE_FIND_ROOT_PATH
+)
+set(OPENVR_INCLUDE_DIR ${OPENVR}/headers)
+
 
 find_package(catkin REQUIRED COMPONENTS rviz)
 catkin_package()
-include_directories(${catkin_INCLUDE_DIRS})
-link_directories(${catkin_LIBRARY_DIRS})
+include_directories(${catkin_INCLUDE_DIRS} ${OPENVR_INCLUDE_DIR})
 
 ## This setting causes Qt's "MOC" generation to happen automatically.
 set(CMAKE_AUTOMOC ON)
@@ -62,7 +96,7 @@ set(SRC_FILES
 
 add_library(${PROJECT_NAME} ${SRC_FILES})
 
-target_link_libraries(${PROJECT_NAME} ${QT_LIBRARIES} ${catkin_LIBRARIES} openvr_api ${SDL2_LIBRARY} ${GLEW_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${QT_LIBRARIES} ${catkin_LIBRARIES} ${OPENVR_LIBRARIES} ${SDL2_LIBRARY} ${GLEW_LIBRARIES})
 
 ## Install rules
 
